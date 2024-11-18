@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -10,19 +11,28 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	// Define command-line flags
+	streamKey := flag.String("stream", "example-stream", "Redis stream key")
+	flag.Parse()
+
+	// Validate required flags
+	if *streamKey == "" {
+		log.Fatal("Stream key cannot be empty")
+	}
 
 	// Initialize Redis client
+	ctx := context.Background()
 	rdb := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
 
-	streamKey := "example-stream-group"
+	log.Printf("Producing messages to stream: %s", *streamKey)
 
+	// Publish messages to the stream
 	for i := 1; i <= 10; i++ {
 		message := fmt.Sprintf("Message %d", i)
 		_, err := rdb.XAdd(ctx, &redis.XAddArgs{
-			Stream: streamKey,
+			Stream: *streamKey,
 			Values: map[string]interface{}{"message": message},
 		}).Result()
 		if err != nil {
