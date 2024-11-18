@@ -1,4 +1,4 @@
-module redis-pipeline
+module hyperloglog
 
 go 1.23.3
 

@@ -15,9 +15,11 @@ func main() {
 		Addr: "localhost:6379",
 	})
 
-	// Number of keys to insert
-	totalKeys := 100000
+	benchmarkSetKeys(ctx, rdb, 100000)
+	testPipelineErrorHandling(ctx, rdb)
+}
 
+func benchmarkSetKeys(ctx context.Context, rdb *redis.Client, totalKeys int) {
 	// Without Pipeline
 	start := time.Now()
 	for i := 0; i < totalKeys; i++ {
@@ -45,4 +47,32 @@ func main() {
 	}
 	durationWithPipeline := time.Since(start)
 	fmt.Printf("Time taken with pipeline: %v\n", durationWithPipeline)
+}
+
+func testPipelineErrorHandling(ctx context.Context, rdb *redis.Client) {
+	// Initialize the pipeline
+	pipe := rdb.Pipeline()
+
+	// Add commands to the pipeline
+	err := pipe.Set(ctx, "key1", "value1", 0).Err() // valid command
+	if err != nil {
+		log.Fatalf("Error setting key1: %v", err)
+		return
+	}
+	err = pipe.Incr(ctx, "key1").Err() // invalid command
+	if err != nil {
+		log.Fatalf("Error incrementing key2: %v", err)
+		return
+	}
+	err = pipe.Set(ctx, "key1", "value3", 0).Err() // valid command
+	if err != nil {
+		log.Fatalf("Error setting key1: %v", err)
+		return
+	}
+
+	// Execute the pipeline
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		log.Printf("Pipeline execution error: %v", err)
+	}
 }
